@@ -410,8 +410,9 @@ do
     local Funcs = {};
 
     function Funcs:AddColorPicker(Idx, Info)
-        local ToggleLabel = self.Container;
-        -- local Container = self.Container;
+        local ParentObj = self
+        local ToggleLabel = self.TextLabel;
+        --local Container = self.Container;
 
         assert(Info.Default, 'AddColorPicker: Missing default value.');
 
@@ -419,7 +420,7 @@ do
             Value = Info.Default;
             Transparency = Info.Transparency or 0;
             Type = 'ColorPicker';
-            Title = type(Info.Title) == 'string' and Info.Title or 'Color picker',
+            Title = typeof(Info.Title) == 'string' and Info.Title or 'Color picker',
             Callback = Info.Callback or function(Color) end;
         };
 
@@ -437,7 +438,7 @@ do
             BackgroundColor3 = ColorPicker.Value;
             BorderColor3 = Library:GetDarkerColor(ColorPicker.Value);
             BorderMode = Enum.BorderMode.Inset;
-            Size = UDim2.new(0, 19.6, 0, 9.8);
+            Size = UDim2.new(0, 28, 0, 14);
             ZIndex = 6;
             Parent = ToggleLabel;
         });
@@ -467,7 +468,6 @@ do
             ZIndex = 15;
             Parent = ScreenGui,
         });
-
 
         DisplayFrame:GetPropertyChangedSignal('AbsolutePosition'):Connect(function()
             PickerFrameOuter.Position = UDim2.fromOffset(DisplayFrame.AbsolutePosition.X, DisplayFrame.AbsolutePosition.Y + 18);
