@@ -2107,33 +2107,26 @@ do
             Multi = Info.Multi;
             Type = 'Dropdown';
             SpecialType = Info.SpecialType; -- can be either 'Player' or 'Team'
-            Visible = typeof(Info.Visible) ~= "boolean" and true or Info.Visible;
             Callback = Info.Callback or function(Value) end;
-
-            OriginalText = Info.Text; Text = Info.Text;
         };
 
-        local DropdownLabel;
-        local Blank;
-        local CompactBlank;
         local Groupbox = self;
         local Container = Groupbox.Container;
 
         local RelativeOffset = 0;
 
         if not Info.Compact then
-            DropdownLabel = Library:CreateLabel({
+            local DropdownLabel = Library:CreateLabel({
                 Size = UDim2.new(1, 0, 0, 10);
                 TextSize = 14;
                 Text = Info.Text;
                 TextXAlignment = Enum.TextXAlignment.Left;
                 TextYAlignment = Enum.TextYAlignment.Bottom;
-                Visible = Dropdown.Visible;
                 ZIndex = 5;
                 Parent = Container;
             });
 
-            CompactBlank = Groupbox:AddBlank(3, Dropdown.Visible);
+            Groupbox:AddBlank(3);
         end
 
         for _, Element in next, Container:GetChildren() do
@@ -2146,7 +2139,6 @@ do
             BackgroundColor3 = Color3.new(0, 0, 0);
             BorderColor3 = Color3.new(0, 0, 0);
             Size = UDim2.new(1, -4, 0, 20);
-            Visible = Dropdown.Visible;
             ZIndex = 5;
             Parent = Container;
         });
@@ -2204,11 +2196,11 @@ do
             { BorderColor3 = 'Black' }
         );
 
-        if typeof(Info.Tooltip) == 'string' then
+        if type(Info.Tooltip) == 'string' then
             Library:AddToolTip(Info.Tooltip, DropdownOuter)
         end
 
-        local MAX_DROPDOWN_ITEMS = 8;
+        local MAX_DROPDOWN_ITEMS = 25;
 
         local ListOuter = Library:Create('Frame', {
             BackgroundColor3 = Color3.new(0, 0, 0);
@@ -2223,8 +2215,7 @@ do
         end;
 
         local function RecalculateListSize(YSize)
-            local Y = YSize or math.clamp(GetTableSize(Dropdown.Values) * 20, 0, MAX_DROPDOWN_ITEMS * 20) + 1;
-            ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X + 0.5, Y)
+            ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X, YSize or (MAX_DROPDOWN_ITEMS * 20 + 2))
         end;
 
         RecalculateListPosition();
@@ -2317,19 +2308,19 @@ do
             end;
 
             local Count = 0;
+
             for Idx, Value in next, Values do
                 local Table = {};
 
                 Count = Count + 1;
 
-                local Button = Library:Create('TextButton', {
-                    AutoButtonColor = false,
+                local Button = Library:Create('Frame', {
                     BackgroundColor3 = Library.MainColor;
                     BorderColor3 = Library.OutlineColor;
                     BorderMode = Enum.BorderMode.Middle;
                     Size = UDim2.new(1, -1, 0, 20);
-                    Text = '';
                     ZIndex = 23;
+                    Active = true,
                     Parent = Scrolling;
                 });
 
@@ -2373,41 +2364,42 @@ do
                     Library.RegistryMap[ButtonLabel].Properties.TextColor3 = Selected and 'AccentColor' or 'FontColor';
                 end;
 
-                Button.MouseButton1Click:Connect(function(Input)
-                    local Try = not Selected;
+                ButtonLabel.InputBegan:Connect(function(Input)
+                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                        local Try = not Selected;
 
-                    if Dropdown:GetActiveValues() == 1 and (not Try) and (not Info.AllowNull) then
-                    else
-                        if Info.Multi then
-                            Selected = Try;
-
-                            if Selected then
-                                Dropdown.Value[Value] = true;
-                            else
-                                Dropdown.Value[Value] = nil;
-                            end;
+                        if Dropdown:GetActiveValues() == 1 and (not Try) and (not Info.AllowNull) then
                         else
-                            Selected = Try;
+                            if Info.Multi then
+                                Selected = Try;
 
-                            if Selected then
-                                Dropdown.Value = Value;
+                                if Selected then
+                                    Dropdown.Value[Value] = true;
+                                else
+                                    Dropdown.Value[Value] = nil;
+                                end;
                             else
-                                Dropdown.Value = nil;
+                                Selected = Try;
+
+                                if Selected then
+                                    Dropdown.Value = Value;
+                                else
+                                    Dropdown.Value = nil;
+                                end;
+
+                                for _, OtherButton in next, Buttons do
+                                    OtherButton:UpdateButton();
+                                end;
                             end;
 
-                            for _, OtherButton in next, Buttons do
-                                OtherButton:UpdateButton();
-                            end;
+                            Table:UpdateButton();
+                            Dropdown:Display();
+
+                            Library:SafeCallback(Dropdown.Callback, Dropdown.Value);
+                            Library:SafeCallback(Dropdown.Changed, Dropdown.Value);
+
+                            Library:AttemptSave();
                         end;
-
-                        Table:UpdateButton();
-                        Dropdown:Display();
-                        
-                        Library:UpdateDependencyBoxes();
-                        Library:SafeCallback(Dropdown.Callback, Dropdown.Value);
-                        Library:SafeCallback(Dropdown.Changed, Dropdown.Value);
-
-                        Library:AttemptSave();
                     end;
                 end);
 
@@ -2418,11 +2410,6 @@ do
             end;
 
             Scrolling.CanvasSize = UDim2.fromOffset(0, (Count * 20) + 1);
-
-            -- Workaround for silly roblox bug - not sure why it happens but sometimes the dropdown list will be empty
-            -- ... and for some reason refreshing the Visible property fixes the issue??????? thanks roblox!
-            Scrolling.Visible = false;
-            Scrolling.Visible = true;
 
             local Y = math.clamp(Count * 20, 0, MAX_DROPDOWN_ITEMS * 20) + 1;
             RecalculateListSize(Y);
@@ -2436,35 +2423,13 @@ do
             Dropdown:BuildDropdownList();
         end;
 
-        function Dropdown:SetVisible(Visibility)
-            Dropdown.Visible = Visibility;
-
-            DropdownOuter.Visible = Dropdown.Visible;
-            if DropdownLabel then DropdownLabel.Visible = Dropdown.Visible end;
-            if Blank then Blank.Visible = Dropdown.Visible end;
-            if CompactBlank then CompactBlank.Visible = Dropdown.Visible end;
-            if not Dropdown.Visible then Dropdown:CloseDropdown() end;
-
-            Groupbox:Resize();
-        end;
-
         function Dropdown:OpenDropdown()
-            if Library.IsMobile then
-                Library.CanDrag = false;
-            end;
-
             ListOuter.Visible = true;
             Library.OpenedFrames[ListOuter] = true;
             DropdownArrow.Rotation = 180;
-            
-            RecalculateListSize();
         end;
 
         function Dropdown:CloseDropdown()
-            if Library.IsMobile then            
-                Library.CanDrag = true;
-            end;
-
             ListOuter.Visible = false;
             Library.OpenedFrames[ListOuter] = nil;
             DropdownArrow.Rotation = 0;
@@ -2500,18 +2465,8 @@ do
             Library:SafeCallback(Dropdown.Changed, Dropdown.Value);
         end;
 
-        function Dropdown:SetText(Text)
-            if typeof(Text) == 'string' then
-                if Info.Compact then Info.Compact = false end;
-                Dropdown.Text = Text;
-
-                if DropdownLabel then DropdownLabel.Text = Dropdown.Text end;
-                Dropdown:Display();
-            end
-        end;
-
         DropdownOuter.InputBegan:Connect(function(Input)
-            if (Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame()) or Input.UserInputType == Enum.UserInputType.Touch then
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch and not Library:MouseIsOverOpenedFrame() then
                 if ListOuter.Visible then
                     Dropdown:CloseDropdown();
                 else
@@ -2537,19 +2492,19 @@ do
 
         local Defaults = {}
 
-        if typeof(Info.Default) == 'string' then
+        if type(Info.Default) == 'string' then
             local Idx = table.find(Dropdown.Values, Info.Default)
             if Idx then
                 table.insert(Defaults, Idx)
             end
-        elseif typeof(Info.Default) == 'table' then
+        elseif type(Info.Default) == 'table' then
             for _, Value in next, Info.Default do
                 local Idx = table.find(Dropdown.Values, Value)
                 if Idx then
                     table.insert(Defaults, Idx)
                 end
             end
-        elseif typeof(Info.Default) == 'number' and Dropdown.Values[Info.Default] ~= nil then
+        elseif type(Info.Default) == 'number' and Dropdown.Values[Info.Default] ~= nil then
             table.insert(Defaults, Info.Default)
         end
 
@@ -2569,7 +2524,7 @@ do
             Dropdown:Display();
         end
 
-        Blank = Groupbox:AddBlank(Info.BlankSize or 5, Dropdown.Visible);
+        Groupbox:AddBlank(Info.BlankSize or 5);
         Groupbox:Resize();
 
         Options[Idx] = Dropdown;
