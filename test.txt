@@ -142,7 +142,13 @@ function Library:ApplyTextStroke(Inst)
         Parent = Inst;
     });
 end;
-
+local function GetTableSize(t)
+    local n = 0
+    for _, _ in pairs(t) do
+        n = n + 1
+    end
+    return n   
+end;
 function Library:CreateLabel(Properties, IsHud)
     local _Instance = Library:Create('TextLabel', {
         BackgroundTransparency = 1;
